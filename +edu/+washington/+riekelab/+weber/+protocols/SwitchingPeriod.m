@@ -59,11 +59,10 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
 %                     'measurementRegion', [obj.stepPre obj.stepPre+obj.stepStim]);
             
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.meanMagnitude, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
         
-        function [stim, variableFlashTime] = createLedStimulus(obj, epochNum)
-            variableFlashTime = obj.determineVariableFlashTime(epochNum);
+        function [stim,seed1,seed2] = createLedStimulus(obj, epochNum)
             
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
@@ -82,7 +81,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             %%% noise 1
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
-            seed = RandStream.shuffleSeed;
+            seed1 = RandStream.shuffleSeed;
             
             gen.preTime = 0; % convert to ms
             gen.stimTime = obj.periodDur*1000/2;  
@@ -91,7 +90,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
-            gen.seed = seed;
+            gen.seed = seed1;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
                        
@@ -100,7 +99,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             %%% noise 2
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
-            seed = RandStream.shuffleSeed;
+            seed2 = RandStream.shuffleSeed;
             
             gen.preTime = obj.periodDur*1000/2; % convert to ms
             gen.stimTime = obj.periodDur*1000/2;  
@@ -109,7 +108,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
-            gen.seed = seed;
+            gen.seed = seed2;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
                        
@@ -126,19 +125,13 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epochNum = obj.numEpochsPrepared;
-            [stim] = obj.createLedStimulus(epochNum);
+            [stim,seed1,seed2] = obj.createLedStimulus(epochNum);
 
-            epoch.addParameter('seed', seed);
+            epoch.addParameter('seed1', seed1);
+            epoch.addParameter('seed2', seed2);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
-        end
-        
-        function prepareInterval(obj, interval)
-            prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
-            
-            device = obj.rig.getDevice(obj.led);
-            interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
