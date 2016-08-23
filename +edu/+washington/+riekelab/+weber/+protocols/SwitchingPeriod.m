@@ -37,19 +37,12 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
         
-%         function p = getPreview(obj, panel)
-%             p = symphonyui.builtin.previews.StimuliPreview(panel, @()createPreviewStimuli(obj));
-%             function s = createPreviewStimuli(obj)
-%                 s = cell(1, obj.numFlashTimes);
-%                 for i = 1:obj.numFlashTimes
-%                     s{i} = obj.createLedStimulus(i);
-%                 end
-%             end
-%         end
+        function p = getPreview(obj, panel)
+            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
+        end
         
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
-            
             
 %                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 %                 obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
