@@ -108,8 +108,8 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
                         'Parent', obj.axesHandle(2),'Color',[1 1 1]*tintFactors(lineNum)+[0 0 0]);
                 end
                 % keep first 'numEpochsAvg' as reference
-                line(centers,obj.mostRecentAvgs(end,:),...
-                    'Parent', obj.axesHandle(2),'Color',[1 0 0]);
+                line(centers,obj.mostRecentAvgs(1,:),...
+                    'Parent', obj.axesHandle(2),'Color',[ 0 0]);
 
             end
             

@@ -20,7 +20,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
 
         amp                             % Input amplifier
 
-        binSize = 50;                   % Size of histogram bin for PSTH (ms)
+        smoothWindow = 10;              % Std of Gaussian smoothing window for PSTH (ms)
         numEpochsAvg = 5;               % Number of epochs to average for each PSTH trace
         numAvgsPlot = 5;                % Number of PSTHs to keep on plot
 
@@ -49,7 +49,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs);
+            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),smoothWindow,numEpochsAvg,numAvgsPlot);
            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
