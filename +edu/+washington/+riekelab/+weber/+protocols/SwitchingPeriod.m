@@ -20,6 +20,10 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
 
         amp                             % Input amplifier
 
+        smoothWindow = 10;              % Std of Gaussian smoothing window for PSTH (ms)
+        numEpochsAvg = 5;               % Number of epochs to average for each PSTH trace
+        numAvgsPlot = 5;                % Number of PSTHs to keep on plot
+
     end
     
     
@@ -44,13 +48,9 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-%                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-%                 obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
-%                     'groupBy', {'variableFlashTime'});
-%                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
-%                     'baselineRegion', [0 obj.stepPre], ...
-%                     'measurementRegion', [obj.stepPre obj.stepPre+obj.stepStim]);
-            
+            obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp));
+           
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end

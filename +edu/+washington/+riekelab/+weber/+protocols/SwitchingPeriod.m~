@@ -13,7 +13,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         stepLum = 1;                    % Luminance for second half of epoch
         stepContr = .06;                % Contrast for second half of epoch
 
-        numEpochs = uint16(5)    % Number of epochs
+        numEpochs = uint16(5)           % Number of epochs
 
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -37,20 +37,14 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
         
-%         function p = getPreview(obj, panel)
-%             p = symphonyui.builtin.previews.StimuliPreview(panel, @()createPreviewStimuli(obj));
-%             function s = createPreviewStimuli(obj)
-%                 s = cell(1, obj.numFlashTimes);
-%                 for i = 1:obj.numFlashTimes
-%                     s{i} = obj.createLedStimulus(i);
-%                 end
-%             end
-%         end
+        function p = getPreview(obj, panel)
+            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
+        end
         
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            
+            obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 %                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 %                 obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
 %                     'groupBy', {'variableFlashTime'});
@@ -59,11 +53,10 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
 %                     'measurementRegion', [obj.stepPre obj.stepPre+obj.stepStim]);
             
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.meanMagnitude, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
         
-        function [stim, variableFlashTime] = createLedStimulus(obj, epochNum)
-            variableFlashTime = obj.determineVariableFlashTime(epochNum);
+        function [stim,seed1,seed2] = createLedStimulus(obj, epochNum)
             
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
@@ -82,7 +75,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             %%% noise 1
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
-            seed = RandStream.shuffleSeed;
+            seed1 = RandStream.shuffleSeed;
             
             gen.preTime = 0; % convert to ms
             gen.stimTime = obj.periodDur*1000/2;  
@@ -91,7 +84,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
-            gen.seed = seed;
+            gen.seed = seed1;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
                        
@@ -100,7 +93,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             %%% noise 2
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
-            seed = RandStream.shuffleSeed;
+            seed2 = RandStream.shuffleSeed;
             
             gen.preTime = obj.periodDur*1000/2; % convert to ms
             gen.stimTime = obj.periodDur*1000/2;  
@@ -109,7 +102,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
-            gen.seed = seed;
+            gen.seed = seed2;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
                        
@@ -126,50 +119,24 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epochNum = obj.numEpochsPrepared;
-            [stim] = obj.createLedStimulus(epochNum);
+            [stim,seed1,seed2] = obj.createLedStimulus(epochNum);
 
-            epoch.addParameter('seed', seed);
+            epoch.addParameter('seed1', seed1);
+            epoch.addParameter('seed2', seed2);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
-            if numel(obj.rig.getDeviceNames('Amp')) >= 2
-                epoch.addResponse(obj.rig.getDevice(obj.amp2));
-            end
-        end
-        
-        function prepareInterval(obj, interval)
-            prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
-            
-            device = obj.rig.getDevice(obj.led);
-            interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.numberOfAverages * obj.numFlashTimes;
+            tf = obj.numEpochsPrepared < obj.numEpochs;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.numberOfAverages * obj.numFlashTimes;
+            tf = obj.numEpochsCompleted < obj.numEpochs;
         end
                 
-        function a = get.amp2(obj)
-            amps = obj.rig.getDeviceNames('Amp');
-            if numel(amps) < 2
-                a = '(None)';
-            else
-                i = find(~ismember(amps, obj.amp), 1);
-                a = amps{i};
-            end
-        end
-        
-        function value = get.totalTime(obj)
-           value = obj.stepPre + obj.stepStim + obj.stepTail;
-        end
-        
-        function value = get.numFlashTimes(obj)
-           value = numel(obj.variableFlashTimes); 
-        end
-        
+
     end
     
 end
