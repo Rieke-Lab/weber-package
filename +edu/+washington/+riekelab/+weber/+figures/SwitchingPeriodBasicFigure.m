@@ -40,13 +40,13 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             %%%% flip axes ud
             obj.axesHandle(1) = subplot(3,1,1:2,...
                 'Parent',obj.figureHandle);
-            xlabel(obj.axesHandle(1), 'Time (ms)');
+            xlabel(obj.axesHandle(1), 'Time (s)');
             ylabel(obj.axesHandle(1), 'Epoch');
             ylim(obj.axesHandle(1), [1 numEpochs+1]);
 
             obj.axesHandle(2) = subplot(3,1,3,...
                 'Parent',obj.figureHandle);
-            xlabel(obj.axesHandle(2), 'Time (ms)');
+            xlabel(obj.axesHandle(2), 'Time (s)');
             ylabel(obj.axesHandle(2), 'Firing rate (sp/s)');       
         end
         
@@ -64,7 +64,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             epochResponseTrace = response.getData();
             sampleRate = response.sampleRate.quantityInBaseUnits;
             edges = 0:obj.binSize/1000*sampleRate:length(epochResponseTrace);
-            centers = edges(1:end-1)+obj.binSize/1000*sampleRate/2;
+            centers = (edges(1:end-1)+obj.binSize/1000*sampleRate/2)/sampleRate;
             
             %%% for spikes
             S = edu.washington.riekelab.turner.utils.spikeDetectorOnline(epochResponseTrace);

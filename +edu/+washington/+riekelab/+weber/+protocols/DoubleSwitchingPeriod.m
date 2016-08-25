@@ -14,8 +14,8 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         stepLum = 1;                    % Luminance for second half of epoch
         stepContr = .06;                % Contrast for second half of epoch
 
-        epochsPerBlock = uint16(6)      % Number of epochs (for each switching period) within each block
-        numBlocks = uint16(20)          % Number of blocks
+        epochsPerBlock = 6              % Number of epochs (for each switching period) within each block
+        numBlocks = 20                  % Number of blocks
 
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -44,30 +44,33 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
         end
         
-        function prepareRun(obj)
+        function obj = prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs);
+            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.numBlocks,obj.binSize);
            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
         
-        function [stim,seed1,seed2] = createLedStimulus(obj)
+        function [stim,seed1,seed2] = createLedStimulus(obj, epochNum)
             
+            if isempty(obj.numEpochsPrepared)
+                obj.numEpochsPrepared = 0;
+            end
             % determine which periodDur to use
-            if mod(obj.numEpochsPrepared,obj.epochsPerBlock*2) <= obj.epochsPerBlock
-                obj.periodDur = obj.periodDur1;
+            if mod(obj.numEpochsPrepared,obj.epochsPerBlock*2) <= obj.epochsPerBlock && mod(obj.numEpochsPrepared,obj.epochsPerBlock*2)~= 0
+                periodDur = obj.periodDur1;
             else
-                obj.periodDur = obj.periodDur2;
+                periodDur = obj.periodDur2;
             end
                 
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
-            gen.preTime = obj.periodDur*1000/2; % convert to ms
-            gen.stimTime = obj.periodDur*1000/2;  
+            gen.preTime = periodDur*1000/2; % convert to ms
+            gen.stimTime = periodDur*1000/2;  
             gen.tailTime = 0;
             gen.mean = obj.baseLum;
             gen.amplitude = obj.stepLum - obj.baseLum;
@@ -83,8 +86,8 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             seed1 = RandStream.shuffleSeed;
             
             gen.preTime = 0; % convert to ms
-            gen.stimTime = obj.periodDur*1000/2;  
-            gen.tailTime = obj.periodDur*1000/2;
+            gen.stimTime = periodDur*1000/2;  
+            gen.tailTime = periodDur*1000/2;
             gen.stDev = obj.baseLum * obj.baseContr;
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
@@ -100,8 +103,8 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             
             seed2 = RandStream.shuffleSeed;
             
-            gen.preTime = obj.periodDur*1000/2; % convert to ms
-            gen.stimTime = obj.periodDur*1000/2;  
+            gen.preTime = periodDur*1000/2; % convert to ms
+            gen.stimTime = periodDur*1000/2;  
             gen.tailTime = 0;
             gen.stDev = obj.stepLum * obj.stepContr;
             gen.freqCutoff = obj.frequencyCutoff;
