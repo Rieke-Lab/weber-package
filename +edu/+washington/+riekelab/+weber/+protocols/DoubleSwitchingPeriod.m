@@ -1,4 +1,4 @@
-classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
 
     % presents either contrast or luminance steps with a given period,
     % intended to evaluate the timescale of adaptation
@@ -6,14 +6,16 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties
         led                             % Output LED
         
-        periodDur = 2                   % Switching period (s)
+        periodDur1 = 2                  % Switching period 1 (s)
+        periodDur2 = 10;                % Switching period 2 (s)
 
         baseLum = 0;                    % Luminance for first half of epoch
         baseContr = .06;                % Contrast for first half of epoch
         stepLum = 1;                    % Luminance for second half of epoch
         stepContr = .06;                % Contrast for second half of epoch
 
-        numEpochs = uint16(25)           % Number of epochs
+        epochsPerBlock = uint16(6)      % Number of epochs (for each switching period) within each block
+        numBlocks = uint16(20)          % Number of blocks
 
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -21,7 +23,6 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         amp                             % Input amplifier
 
         binSize = 50;                   % Size of histogram bin for PSTH (ms)
-
     end
     
     
@@ -47,7 +48,7 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs);
+            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs);
            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
@@ -55,6 +56,13 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function [stim,seed1,seed2] = createLedStimulus(obj)
             
+            % determine which periodDur to use
+            if mod(obj.numEpochsPrepared,obj.epochsPerBlock*2) <= obj.epochsPerBlock
+                obj.periodDur = obj.periodDur1;
+            else
+                obj.periodDur = obj.periodDur2;
+            end
+                
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
@@ -126,11 +134,11 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.numEpochs;
+            tf = obj.numEpochsPrepared < obj.epochsPerBlock*2*obj.numBlocks;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.numEpochs;
+            tf = obj.numEpochsCompleted < obj.epochsPerBlock*2*obj.numBlocks;
         end
                 
 
