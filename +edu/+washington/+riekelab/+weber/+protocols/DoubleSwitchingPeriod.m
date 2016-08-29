@@ -41,14 +41,14 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         end
         
         function p = getPreview(obj, panel)
-            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
+            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus(1));
         end
         
         function obj = prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.numBlocks,obj.binSize);
+            %obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+            %obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.numBlocks,obj.binSize);
            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
@@ -56,11 +56,11 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         
         function [stim,seed1,seed2] = createLedStimulus(obj, epochNum)
             
-            if isempty(obj.numEpochsPrepared)
-                obj.numEpochsPrepared = 0;
-            end
+%             if isempty(obj.numEpochsPrepared)
+%                 obj.numEpochsPrepared = 0;
+%             end
             % determine which periodDur to use
-            if mod(obj.numEpochsPrepared,obj.epochsPerBlock*2) <= obj.epochsPerBlock && mod(obj.numEpochsPrepared,obj.epochsPerBlock*2)~= 0
+            if mod(epochNum,obj.epochsPerBlock*2) <= obj.epochsPerBlock && mod(epochNum,obj.epochsPerBlock*2)~= 0
                 periodDur = obj.periodDur1;
             else
                 periodDur = obj.periodDur2;
@@ -142,6 +142,7 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         
         function tf = shouldContinueRun(obj)
             tf = obj.numEpochsCompleted < obj.epochsPerBlock*2*obj.numBlocks;
+            disp(tf);
         end
                 
 
