@@ -7,15 +7,16 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         led                             % Output LED
         
         periodDur1 = 2                  % Switching period 1 (s)
-        periodDur2 = 10;                % Switching period 2 (s)
+        periodDur2 = 10                 % Switching period 2 (s)
 
-        baseLum = 0;                    % Luminance for first half of epoch
-        baseContr = .06;                % Contrast for first half of epoch
-        stepLum = 1;                    % Luminance for second half of epoch
-        stepContr = .06;                % Contrast for second half of epoch
-
-        epochsPerBlock = 6              % Number of epochs (for each switching period) within each block
-        numBlocks = 20                  % Number of blocks
+        baseLum = .5                    % Luminance for first half of epoch
+        baseContr = .06                 % Contrast for first half of epoch
+        stepLum = 1                     % Luminance for second half of epoch
+        stepContr = .03                 % Contrast for second half of epoch
+        startLow = true                 % Start at baseLum/baseContr or stepLum/stepContr
+        
+        epochsPerBlock = uint16(6)      % Number of epochs (for each switching period) within each block
+        numBlocks = uint16(20)          % Number of blocks
 
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -47,31 +48,37 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         function obj = prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            %obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            %obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.numBlocks,obj.binSize);
+            obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.binSize);
            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
         
-        function [stim,seed1,seed2] = createLedStimulus(obj, epochNum)
+        function [stim,seed1,seed2,positionInBlock] = createLedStimulus(obj, epochNum)
             
-%             if isempty(obj.numEpochsPrepared)
-%                 obj.numEpochsPrepared = 0;
-%             end
             % determine which periodDur to use
-            if mod(epochNum,obj.epochsPerBlock*2) <= obj.epochsPerBlock && mod(epochNum,obj.epochsPerBlock*2)~= 0
+            positionInBlock = mod(epochNum,double(obj.epochsPerBlock)*2); % calculate whether in first or second half of each full block
+            if positionInBlock == 0
+                positionInBlock = double(obj.epochsPerBlock)*2;
+            end
+            if  positionInBlock <= obj.epochsPerBlock
                 periodDur = obj.periodDur1;
             else
                 periodDur = obj.periodDur2;
             end
-                
+            
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
-            gen.preTime = periodDur*1000/2; % convert to ms
+            if obj.startLow  % start with baseLum/baseContr
+                gen.preTime = periodDur*1000/2; % convert to ms
+                gen.tailTime = 0;
+            else % start with stepLum/stepContr
+                gen.preTime = 0; % convert to ms
+                gen.tailTime = periodDur*1000/2;
+            end
             gen.stimTime = periodDur*1000/2;  
-            gen.tailTime = 0;
             gen.mean = obj.baseLum;
             gen.amplitude = obj.stepLum - obj.baseLum;
             gen.sampleRate = obj.sampleRate;
@@ -80,15 +87,20 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             stepStimulus = gen.generate();
         
             % now make noise
-            %%% noise 1
+            %%% noise 1 (first half)
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             seed1 = RandStream.shuffleSeed;
             
             gen.preTime = 0; % convert to ms
-            gen.stimTime = periodDur*1000/2;  
             gen.tailTime = periodDur*1000/2;
-            gen.stDev = obj.baseLum * obj.baseContr;
+
+            if obj.startLow  % start with baseLum/baseContr
+                gen.stDev = obj.baseLum * obj.baseContr;
+            else % start with stepLum/stepContr
+                gen.stDev = obj.stepLum * obj.stepContr;
+            end
+            gen.stimTime = periodDur*1000/2;
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
@@ -98,15 +110,20 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
                        
             noiseStimuli{1} = gen.generate();
             
-            %%% noise 2
+            %%% noise 2 (second half)
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             seed2 = RandStream.shuffleSeed;
             
             gen.preTime = periodDur*1000/2; % convert to ms
-            gen.stimTime = periodDur*1000/2;  
             gen.tailTime = 0;
-            gen.stDev = obj.stepLum * obj.stepContr;
+
+            if obj.startLow  % end with stepLum/stepContr
+                gen.stDev = obj.stepLum * obj.stepContr;
+            else % end with baseLum/baseContr
+                gen.stDev = obj.baseLum * obj.baseContr;
+            end
+            gen.stimTime = periodDur*1000/2;  
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
@@ -127,22 +144,22 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epochNum = obj.numEpochsPrepared;
-            [stim,seed1,seed2] = obj.createLedStimulus(epochNum);
+            [stim,seed1,seed2,positionInBlock] = obj.createLedStimulus(epochNum);
 
             epoch.addParameter('seed1', seed1);
             epoch.addParameter('seed2', seed2);
+            epoch.addParameter('positionInBlock', positionInBlock);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.epochsPerBlock*2*obj.numBlocks;
+            tf = obj.numEpochsPrepared < double(obj.epochsPerBlock)*2*double(obj.numBlocks);
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.epochsPerBlock*2*obj.numBlocks;
-            disp(tf);
+            tf = obj.numEpochsCompleted < double(obj.epochsPerBlock)*2*double(obj.numBlocks);        
         end
                 
 

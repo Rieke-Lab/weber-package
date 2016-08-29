@@ -8,12 +8,13 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         periodDur = 2                   % Switching period (s)
 
-        baseLum = 0;                    % Luminance for first half of epoch
+        baseLum = .5;                   % Luminance for first half of epoch
         baseContr = .06;                % Contrast for first half of epoch
         stepLum = 1;                    % Luminance for second half of epoch
-        stepContr = .06;                % Contrast for second half of epoch
+        stepContr = .03;                % Contrast for second half of epoch
+        startLow = true;                % Start at baseLum/baseContr or stepLum/stepContr
 
-        numEpochs = uint16(25)           % Number of epochs
+        numEpochs = uint16(25)          % Number of epochs
 
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
@@ -21,8 +22,8 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
         amp                             % Input amplifier
 
         binSize = 50;                   % Size of histogram bin for PSTH (ms)
-        numEpochsAvg = 5;               % Number of epochs to average for each PSTH trace
-        numAvgsPlot = 5;                % Number of PSTHs to keep on plot
+        numEpochsAvg = uint16(5);       % Number of epochs to average for each PSTH trace
+        numAvgsPlot = uint16(5);        % Number of PSTHs to keep on plot
 
     end
     
@@ -60,9 +61,14 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             % make baseline steps
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
-            gen.preTime = obj.periodDur*1000/2; % convert to ms
+            if obj.startLow  % start with baseLum/baseContr
+                gen.preTime = obj.periodDur*1000/2; % convert to ms
+                gen.tailTime = 0;
+            else % start with stepLum/stepContr
+                gen.preTime = 0; % convert to ms
+                gen.tailTime = obj.periodDur*1000/2;
+            end
             gen.stimTime = obj.periodDur*1000/2;  
-            gen.tailTime = 0;
             gen.mean = obj.baseLum;
             gen.amplitude = obj.stepLum - obj.baseLum;
             gen.sampleRate = obj.sampleRate;
@@ -71,15 +77,20 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
             stepStimulus = gen.generate();
         
             % now make noise
-            %%% noise 1
+            %%% noise 1 (first half)
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             seed1 = RandStream.shuffleSeed;
             
             gen.preTime = 0; % convert to ms
-            gen.stimTime = obj.periodDur*1000/2;  
             gen.tailTime = obj.periodDur*1000/2;
-            gen.stDev = obj.baseLum * obj.baseContr;
+
+            if obj.startLow  % start with baseLum/baseContr
+                gen.stDev = obj.baseLum * obj.baseContr;
+            else % start with stepLum/stepContr
+                gen.stDev = obj.stepLum * obj.stepContr;
+            end
+            gen.stimTime = obj.periodDur*1000/2;
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
@@ -89,15 +100,20 @@ classdef SwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProtocol
                        
             noiseStimuli{1} = gen.generate();
             
-            %%% noise 2
+            %%% noise 2 (second half)
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             seed2 = RandStream.shuffleSeed;
             
             gen.preTime = obj.periodDur*1000/2; % convert to ms
-            gen.stimTime = obj.periodDur*1000/2;  
             gen.tailTime = 0;
-            gen.stDev = obj.stepLum * obj.stepContr;
+
+            if obj.startLow  % end with stepLum/stepContr
+                gen.stDev = obj.stepLum * obj.stepContr;
+            else % end with baseLum/baseContr
+                gen.stDev = obj.baseLum * obj.baseContr;
+            end
+            gen.stimTime = obj.periodDur*1000/2;  
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;

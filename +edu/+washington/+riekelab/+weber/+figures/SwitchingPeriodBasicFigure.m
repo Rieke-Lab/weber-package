@@ -36,6 +36,9 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             obj.binSize = binSize;
             obj.numEpochsAvg = numEpochsAvg;
             obj.numAvgsPlot = numAvgsPlot;
+            obj.allResponses = [];
+            obj.epochCount = 0;
+            obj.mostRecentAvgs = [];
             
             %%%% flip axes ud
             obj.axesHandle(1) = subplot(3,1,1:2,...
@@ -49,15 +52,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             xlabel(obj.axesHandle(2), 'Time (s)');
             ylabel(obj.axesHandle(2), 'Firing rate (sp/s)');       
         end
-        
-        function clear(obj)  % executed each time 'play' button is hit
-            cla(obj.axesHandle(1))
-            cla(obj.axesHandle(2))
-            obj.allResponses = [];
-            obj.epochCount = 0;
-            obj.mostRecentAvgs = [];
-        end
-        
+               
         function handleEpoch(obj, epoch)
             
             response = epoch.getResponse(obj.amp);
@@ -87,7 +82,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
                 
             %%% plot running average PSTH
             cla(obj.axesHandle(2))
-            if obj.epochCount <= obj.numEpochsAvg % if fewer epochs completed that would like to average
+            if obj.epochCount <= double(obj.numEpochsAvg) % if fewer epochs completed that would like to average
                 
                 % take average of whatever epochs available and plot
                 sumEpochs = sum(obj.allResponses(1:obj.epochCount,:),1);
@@ -99,11 +94,11 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             else
                 % take average of 'numEpochsAvg' most recent epochs and add
                 % on
-                sumEpochs = sum(obj.allResponses(obj.epochCount-obj.numEpochsAvg+1:obj.epochCount,:),1);
-                obj.mostRecentAvgs = [sumEpochs/obj.numEpochsAvg/(obj.binSize/1000); obj.mostRecentAvgs];
+                sumEpochs = sum(obj.allResponses(obj.epochCount-double(obj.numEpochsAvg)+1:obj.epochCount,:),1);
+                obj.mostRecentAvgs = [sumEpochs/double(obj.numEpochsAvg)/(obj.binSize/1000); obj.mostRecentAvgs];
                 
-                tintFactors = linspace(0,1,obj.numAvgsPlot+1);
-                for lineNum = 1:min(obj.numAvgsPlot,(obj.epochCount-obj.numEpochsAvg+1))
+                tintFactors = linspace(0,1,double(obj.numAvgsPlot)+1);
+                for lineNum = 1:min(double(obj.numAvgsPlot),(obj.epochCount-double(obj.numEpochsAvg)+1))
                     line(centers,obj.mostRecentAvgs(lineNum,:),...
                         'Parent', obj.axesHandle(2),'Color',[1 1 1]*tintFactors(lineNum)+[0 0 0]);
                 end
