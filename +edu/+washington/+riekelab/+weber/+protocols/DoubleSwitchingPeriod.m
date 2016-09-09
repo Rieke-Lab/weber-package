@@ -55,7 +55,7 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
         
-        function [stim,seed1,seed2,positionInBlock] = createLedStimulus(obj, epochNum)
+        function [stim,seed1,seed2,positionInBlock,periodDur] = createLedStimulus(obj, epochNum)
             
             % determine which periodDur to use
             positionInBlock = mod(epochNum,double(obj.epochsPerBlock)*2); % calculate whether in first or second half of each full block
@@ -144,11 +144,12 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epochNum = obj.numEpochsPrepared;
-            [stim,seed1,seed2,positionInBlock] = obj.createLedStimulus(epochNum);
+            [stim,seed1,seed2,positionInBlock,periodDur] = obj.createLedStimulus(epochNum);
 
             epoch.addParameter('seed1', seed1);
             epoch.addParameter('seed2', seed2);
             epoch.addParameter('positionInBlock', positionInBlock);
+            epoch.addParameter('periodDur', periodDur);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
