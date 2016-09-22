@@ -50,7 +50,7 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.binSize);
-            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', TOTAL_NUM_EPOCHS)
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
             
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
@@ -157,11 +157,11 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < double(obj.epochsPerBlock)*2*double(obj.numBlocks);
+            tf = obj.numEpochsPrepared < obj.epochsPerBlock*2*obj.numBlocks;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < double(obj.epochsPerBlock)*2*double(obj.numBlocks);        
+            tf = obj.numEpochsCompleted < obj.epochsPerBlock*2*obj.numBlocks;        
         end
                 
 

@@ -62,7 +62,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             centers = (edges(1:end-1)+obj.binSize/1000*sampleRate/2)/sampleRate;
             
             %%% for spikes
-            S = edu.washington.riekelab.turner.utils.spikeDetectorOnline(epochResponseTrace);
+            S = edu.washington.riekelab.weber.utils.spikeDetectorOnline(epochResponseTrace);
             %%%
             
             newHist = histc(S.sp,edges);

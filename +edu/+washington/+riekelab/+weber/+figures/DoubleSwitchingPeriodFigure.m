@@ -73,7 +73,7 @@ classdef DoubleSwitchingPeriodFigure < symphonyui.core.FigureHandler
             edges = 0:obj.binSize/1000*sampleRate:length(epochResponseTrace);
 
             %%% for spikes
-            S = edu.washington.riekelab.turner.utils.spikeDetectorOnline(epochResponseTrace);
+            S = edu.washington.riekelab.weber.utils.spikeDetectorOnline(epochResponseTrace);
             %%%
             
             newHist = histc(S.sp,edges);
