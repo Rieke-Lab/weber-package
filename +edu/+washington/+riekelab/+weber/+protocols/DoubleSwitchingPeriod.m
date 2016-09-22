@@ -50,7 +50,8 @@ classdef DoubleSwitchingPeriod < edu.washington.riekelab.protocols.RiekeLabProto
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.binSize);
-           
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', TOTAL_NUM_EPOCHS)
+            
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
         end
