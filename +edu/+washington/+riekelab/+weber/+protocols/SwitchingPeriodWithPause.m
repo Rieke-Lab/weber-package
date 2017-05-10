@@ -7,19 +7,19 @@ classdef SwitchingPeriodWithPause < edu.washington.riekelab.protocols.RiekeLabPr
     properties
         led                             % Output LED
         
-        periodDur = 5                  % Switching period 1 (s)
-        pauseDur = 15                 % Switching period 2 (s)
+        periodDur = 5                  % Switching period (s)
+        pauseDur = 15                  % Pause duration (s)
         
         baseLum = .5                    % Luminance for first half of epoch
         baseContr = .06                 % Contrast for first half of epoch
-        stepLum = .5                     % Luminance for second half of epoch
+        stepLum = .5                    % Luminance for second half of epoch
         stepContr = .36                 % Contrast for second half of epoch
         startLow = true                 % Start at baseLum/baseContr or stepLum/stepContr
         
-        epochsPerBlock = uint16(6)      % Number of epochs (for each switching period) within each block
-        numBlocks = uint16(20)          % Number of blocks
+        epochsPerBlock = uint16(3)      % Number of epochs (for each switching period) within each block
+        numBlocks = uint16(100)         % Number of blocks
         
-        frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
+        frequencyCutoff = 40            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
         
         amp                             % Input amplifier
@@ -50,7 +50,7 @@ classdef SwitchingPeriodWithPause < edu.washington.riekelab.protocols.RiekeLabPr
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            %             obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.binSize);
+            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodWithPauseFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur,obj.pauseDur,obj.epochsPerBlock,obj.binSize);
             obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
             
             device = obj.rig.getDevice(obj.led);
@@ -65,6 +65,7 @@ classdef SwitchingPeriodWithPause < edu.washington.riekelab.protocols.RiekeLabPr
                 positionInBlock = double(obj.epochsPerBlock)+1;
             end
             positionInBlock = positionInBlock - 1;
+            
             if  positionInBlock == 0 % if 0th position, i.e. pause
                 periodDur = obj.pauseDur;
                 
