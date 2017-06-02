@@ -15,7 +15,7 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
         epochsPerBlock = uint16(6)      % Number of epochs, i.e. number of cycles, (for each frequency) within each block
         numBlocks = uint16(100)         % Number of blocks
 
-        frequencyCutoff = 60            % Noise frequency cutoff for contrast stimulus (Hz)
+        frequencyCutoff = 400           % Noise frequency cutoff for contrast stimulus (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
 
         amp                             % Input amplifier
@@ -46,11 +46,11 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,obj.periodDur1,obj.periodDur2,obj.epochsPerBlock,obj.binSize);
+            obj.showFigure('edu.washington.riekelab.weber.figures.DoubleSwitchingPeriodFigure',obj.rig.getDevice(obj.amp),obj.sampleRate,1/obj.sinFreq1,1/obj.sinFreq2,obj.epochsPerBlock,obj.binSize);
             obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
             
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement(obj.lum, device.background.displayUnits);
         end
         
         function [stim,seed,positionInBlock,sinFreq] = createLedStimulus(obj, epochNum)
@@ -67,7 +67,7 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
             end
             
             % create stim
-            gen = edu.washington.riekelab.weber.stimuli.SineMondulatedNoiseGenerator();
+            gen = edu.washington.riekelab.weber.stimuli.SineModulatedNoiseGenerator();
             
             seed = RandStream.shuffleSeed;
             
@@ -75,9 +75,10 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
             gen.tailTime = 0;
 
             gen.stDev = obj.contr;
-            gen.stimTime = 1/obj.sinFreq * obj.cyclesPerEpoch * 1000; % ms
+            gen.stimTime = 1/sinFreq * 1000; % ms
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
+            gen.sinFreq = sinFreq;
             gen.mean = obj.lum;
             gen.seed = seed;
             gen.sampleRate = obj.sampleRate;
@@ -92,12 +93,11 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epochNum = obj.numEpochsPrepared;
-            [stim,seed1,seed2,positionInBlock,periodDur] = obj.createLedStimulus(epochNum);
+            [stim,seed,positionInBlock,sinFreq] = obj.createLedStimulus(epochNum);
 
-            epoch.addParameter('seed1', seed1);
-            epoch.addParameter('seed2', seed2);
+            epoch.addParameter('seed', seed);
             epoch.addParameter('positionInBlock', positionInBlock);
-            epoch.addParameter('periodDur', periodDur);
+            epoch.addParameter('sinFreq', sinFreq);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             

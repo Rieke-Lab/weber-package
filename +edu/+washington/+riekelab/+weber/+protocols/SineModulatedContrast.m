@@ -12,7 +12,7 @@ classdef SineModulatedContrast < edu.washington.riekelab.protocols.RiekeLabProto
         cyclesPerEpoch = 1;             % Cycles of sine stim in each epoch
         numEpochs = uint16(25)          % Number of epochs
 
-        frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
+        frequencyCutoff = 400           % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
 
         amp                             % Input amplifier

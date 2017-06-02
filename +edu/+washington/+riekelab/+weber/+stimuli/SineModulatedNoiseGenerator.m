@@ -101,7 +101,7 @@ classdef SineModulatedNoiseGenerator < symphonyui.core.StimulusGenerator
             data(data > obj.upperLimit) = obj.upperLimit;
             data(data < obj.lowerLimit) = obj.lowerLimit;
             
-            sinStim = abs(sin((0:stimPts-1)*2*pi*obj.sinFreq/obj.sampleRate)); % only multiplying by +1
+            sinStim = abs(sin((0:stimPts-1)*pi*obj.sinFreq/obj.sampleRate)); % only multiplying by +1, need to divide freq by 2 to only get one pulse per cycle
             
             data(prePts + 1:prePts + stimPts) = (data(prePts + 1:prePts + stimPts) - obj.mean).*sinStim + obj.mean; % subtract out mean, do sine modulation, then add mean back
 
