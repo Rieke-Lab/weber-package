@@ -49,12 +49,12 @@ classdef SineModulatedContrast < edu.washington.riekelab.protocols.RiekeLabProto
             obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs);
            
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.baseLum, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement(obj.lum, device.background.displayUnits);
         end
         
         function [stim,seed] = createLedStimulus(obj, epochNum)
             
-            gen = edu.washington.riekelab.weber.stimuli.SineMondulatedNoiseGenerator();
+            gen = edu.washington.riekelab.weber.stimuli.SineModulatedNoiseGenerator();
             
             seed = RandStream.shuffleSeed;
             
@@ -65,6 +65,7 @@ classdef SineModulatedContrast < edu.washington.riekelab.protocols.RiekeLabProto
             gen.stimTime = 1/obj.sinFreq * obj.cyclesPerEpoch * 1000; % ms
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
+            gen.sinFreq = obj.sinFreq;
             gen.mean = obj.lum;
             gen.seed = seed;
             gen.sampleRate = obj.sampleRate;
