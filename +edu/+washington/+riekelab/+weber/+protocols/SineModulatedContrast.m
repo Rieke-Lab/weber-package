@@ -61,7 +61,7 @@ classdef SineModulatedContrast < edu.washington.riekelab.protocols.RiekeLabProto
             gen.preTime = 0; 
             gen.tailTime = 0;
 
-            gen.stDev = obj.contr;
+            gen.stDev = obj.contr*obj.lum;
             gen.stimTime = 1/obj.sinFreq * obj.cyclesPerEpoch * 1000; % ms
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;

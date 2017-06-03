@@ -74,7 +74,7 @@ classdef DoubleSwitchingSine < edu.washington.riekelab.protocols.RiekeLabProtoco
             gen.preTime = 0; 
             gen.tailTime = 0;
 
-            gen.stDev = obj.contr;
+            gen.stDev = obj.contr*obj.lum;
             gen.stimTime = 1/sinFreq * 1000; % ms
             gen.freqCutoff = obj.frequencyCutoff;
             gen.numFilters = obj.numberOfFilters;
