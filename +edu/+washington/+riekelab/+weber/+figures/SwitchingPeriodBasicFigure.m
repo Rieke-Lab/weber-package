@@ -27,6 +27,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
         allResponses
         epochCount
         mostRecentAvgs
+        numBinsKeep
     end
     
     methods
@@ -61,6 +62,9 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             edges = 0:obj.binSize/1000*sampleRate:length(epochResponseTrace);
             centers = (edges(1:end-1)+obj.binSize/1000*sampleRate/2)/sampleRate;
             
+            if isempty(obj.numBinsKeep)
+                obj.numBinsKeep = length(edges)-1;
+            end
             %%% for spikes
             S = edu.washington.riekelab.weber.utils.spikeDetectorOnline(epochResponseTrace);
             %%%
@@ -69,7 +73,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
             if isempty(newHist)
                 newHist = zeros(size(edges));
             end
-            obj.allResponses = cat(1,obj.allResponses,newHist(1:end-1));
+            obj.allResponses = cat(1,obj.allResponses,newHist(1:obj.numBinsKeep));
             obj.epochCount = obj.epochCount + 1;
             
             %%% plot raster
@@ -88,7 +92,7 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
                 sumEpochs = sum(obj.allResponses(1:obj.epochCount,:),1);
                 obj.mostRecentAvgs = sumEpochs/length(1:obj.epochCount)/(obj.binSize/1000);
                 % only have one line to plot
-                line(centers,obj.mostRecentAvgs,...
+                line(centers(1:obj.numBinsKeep),obj.mostRecentAvgs,...
                     'Parent', obj.axesHandle(2),'Color',[0 0 0]);
                 
             else
@@ -99,11 +103,11 @@ classdef SwitchingPeriodBasicFigure < symphonyui.core.FigureHandler
                 
                 tintFactors = linspace(0,1,double(obj.numAvgsPlot)+1);
                 for lineNum = 1:min(double(obj.numAvgsPlot),(obj.epochCount-double(obj.numEpochsAvg)+1))
-                    line(centers,obj.mostRecentAvgs(lineNum,:),...
+                    line(centers(1:obj.numBinsKeep),obj.mostRecentAvgs(lineNum,:),...
                         'Parent', obj.axesHandle(2),'Color',[1 1 1]*tintFactors(lineNum)+[0 0 0]);
                 end
                 % keep first 'numEpochsAvg' as reference
-                line(centers,obj.mostRecentAvgs(end,:),...
+                line(centers(1:obj.numBinsKeep),obj.mostRecentAvgs(end,:),...
                     'Parent', obj.axesHandle(2),'Color',[1 0 0]);
 
             end
