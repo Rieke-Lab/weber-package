@@ -67,11 +67,12 @@ classdef SwitchingPlainSine_FreqSwitch < edu.washington.riekelab.protocols.Rieke
             else
                 mult = -1;
             end
-            roundedPeriodDur = round(obj.periodDur/2/(1/obj.sinFreq))*(1/obj.sinFreq)*2;
+            roundedPeriodDur1 = round(obj.periodDur/2/(1/obj.sinFreq1))*(1/obj.sinFreq1);
+            roundedPeriodDur2 = round(obj.periodDur/2/(1/obj.sinFreq2))*(1/obj.sinFreq2);
             if  positionInBlock == obj.epochsPerBlock ||  positionInBlock == obj.epochsPerBlock *2
-                periodDurActual = roundedPeriodDur + 1/obj.sinFreq/2;
+                periodDurActual = roundedPeriodDur1 + roundedPeriodDur2 + 1/obj.sinFreq2/2;
             else
-                periodDurActual = roundedPeriodDur;
+                periodDurActual = roundedPeriodDur1 + roundedPeriodDur2;
             end
 
             gen = edu.washington.riekelab.weber.stimuli.SineGenerator();
@@ -82,14 +83,14 @@ classdef SwitchingPlainSine_FreqSwitch < edu.washington.riekelab.protocols.Rieke
 
             if obj.startLow  % start with baseContr
                 gen.preTime = 0;
-                gen.stimTime = roundedPeriodDur/2;
-                gen.tailTime = periodDurActual - roundedPeriodDur/2;
+                gen.stimTime = roundedPeriodDur1;
+                gen.tailTime = periodDurActual - roundedPeriodDur1;
                 gen.contr = obj.baseContr;
                 gen.sinFreq = obj.sinFreq1;
                 firstHalfStim = gen.generate();
                 
-                gen.preTime = roundedPeriodDur/2;
-                gen.stimTime = periodDurActual - roundedPeriodDur/2;
+                gen.preTime = roundedPeriodDur1;
+                gen.stimTime = periodDurActual - roundedPeriodDur1;
                 gen.tailTime = 0;
                 gen.contr = obj.stepContr;
                 gen.sinFreq = obj.sinFreq2;
@@ -97,14 +98,14 @@ classdef SwitchingPlainSine_FreqSwitch < edu.washington.riekelab.protocols.Rieke
 
             else % start with stepContr
                 gen.preTime = 0;
-                gen.stimTime = roundedPeriodDur/2;
-                gen.tailTime = periodDurActual - roundedPeriodDur/2;
+                gen.stimTime = roundedPeriodDur1;
+                gen.tailTime = periodDurActual - roundedPeriodDur1;
                 gen.contr = obj.stepContr;
                 gen.sinFreq = obj.sinFreq1;
                 firstHalfStim = gen.generate();
                 
-                gen.preTime = roundedPeriodDur/2;
-                gen.stimTime = periodDurActual - roundedPeriodDur/2;
+                gen.preTime = roundedPeriodDur1;
+                gen.stimTime = periodDurActual - roundedPeriodDur1;
                 gen.tailTime = 0;
                 gen.contr = obj.baseContr;
                 gen.sinFreq = obj.sinFreq2;

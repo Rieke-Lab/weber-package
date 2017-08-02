@@ -76,7 +76,6 @@ classdef SwitchingPlainSine_PhaseSwitch < edu.washington.riekelab.protocols.Riek
             gen = edu.washington.riekelab.weber.stimuli.SineGenerator();
             gen.sinFreq = obj.sinFreq;
             gen.mean = obj.lum;
-            gen.mult = mult;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
 
@@ -85,12 +84,14 @@ classdef SwitchingPlainSine_PhaseSwitch < edu.washington.riekelab.protocols.Riek
                 gen.stimTime = roundedPeriodDur/2;
                 gen.tailTime = periodDurActual - roundedPeriodDur/2;
                 gen.contr = obj.baseContr;
+                gen.mult = mult;
                 firstHalfStim = gen.generate();
                 
                 gen.preTime = roundedPeriodDur/2;
                 gen.stimTime = periodDurActual - roundedPeriodDur/2;
                 gen.tailTime = 0;
                 gen.contr = obj.stepContr;
+                gen.mult = -mult;
                 secondHalfStim = gen.generate();
 
             else % start with stepContr
@@ -98,18 +99,20 @@ classdef SwitchingPlainSine_PhaseSwitch < edu.washington.riekelab.protocols.Riek
                 gen.stimTime = roundedPeriodDur/2;
                 gen.tailTime = periodDurActual - roundedPeriodDur/2;
                 gen.contr = obj.stepContr;
+                gen.mult = mult;
                 firstHalfStim = gen.generate();
                 
                 gen.preTime = roundedPeriodDur/2;
                 gen.stimTime = periodDurActual - roundedPeriodDur/2;
                 gen.tailTime = 0;
                 gen.contr = obj.baseContr;
+                gen.mult = -mult;
                 secondHalfStim = gen.generate();
             end
             
             % sum them into one stimulus
             sumGen = symphonyui.builtin.stimuli.SumGenerator();
-            sumGen.stimuli = {firstHalfStim, -secondHalfStim};
+            sumGen.stimuli = {firstHalfStim, secondHalfStim};
             stim = sumGen.generate();
 
         end
