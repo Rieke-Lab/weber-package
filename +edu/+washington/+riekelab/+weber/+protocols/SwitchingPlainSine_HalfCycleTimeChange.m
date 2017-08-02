@@ -67,8 +67,8 @@ classdef SwitchingPlainSine_HalfCycleTimeChange < edu.washington.riekelab.protoc
             else
                 mult = -1;
             end
-            roundedPeriodDur1 = round(obj.periodDur/2/(1/obj.sinFreq1))*(1/obj.sinFreq1);
-            roundedPeriodDur2 = round(obj.periodDur/2/(1/obj.sinFreq2))*(1/obj.sinFreq2);
+            roundedPeriodDur1 = round(obj.halfPeriodDur1/(1/obj.sinFreq))*(1/obj.sinFreq);
+            roundedPeriodDur2 = round(obj.halfPeriodDur2/(1/obj.sinFreq))*(1/obj.sinFreq);
             if  positionInBlock == obj.epochsPerBlock ||  positionInBlock == obj.epochsPerBlock *2
                 periodDurActual = roundedPeriodDur1 + roundedPeriodDur2 + 1/obj.sinFreq/2;
             else
