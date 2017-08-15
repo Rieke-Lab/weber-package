@@ -7,8 +7,8 @@ classdef SwitchingPlainSine_FreqSwitch < edu.washington.riekelab.protocols.Rieke
         led                             % Output LED
         
         periodDur = 4                   % Switching period (s)
-        sinFreq1 = 6;                   % Frequency of sine wave for first half of stim (Hz)
-        sinFreq2 = 12;                  % Frequency of sine wave for second half of stim (Hz)
+        sinFreq1 = 4;                   % Frequency of sine wave for first half of stim (Hz)
+        sinFreq2 = 8;                   % Frequency of sine wave for second half of stim (Hz)
         
         lum = .5                        % Luminance
         baseContr = .1                  % Contrast for first half of epoch
