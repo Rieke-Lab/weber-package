@@ -9,9 +9,9 @@ classdef SwitchingPeriodBandpassNoise < edu.washington.riekelab.protocols.RiekeL
         periodDur = 2                   % Switching period (s)
         
         baseLum = .5;                   % Luminance for first half of epoch
-        baseContr = 1;                  % Contrast for first half of epoch
+        baseContr = .5;                 % Contrast for first half of epoch, % of mean
         stepLum = .5;                   % Luminance for second half of epoch
-        stepContr = .5;                 % Contrast for second half of epoch
+        stepContr = 1;                  % Contrast for second half of epoch, % of mean
         startLow = false;               % Start at baseLum/baseContr or stepLum/stepContr
         forceThroughMean = true;        % Force start/end of each half cycle through mean
         
@@ -80,7 +80,7 @@ classdef SwitchingPeriodBandpassNoise < edu.washington.riekelab.protocols.RiekeL
             
             % now make noise
             %%% noise 1 (first half)
-            gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorBandpass();
+            gen = edu.washington.riekelab.weber.stimuli.GaussianNoiseGeneratorBandpass();
             
             seed1 = RandStream.shuffleSeed;
             
@@ -93,7 +93,8 @@ classdef SwitchingPeriodBandpassNoise < edu.washington.riekelab.protocols.RiekeL
                 gen.stDev = obj.stepLum * obj.stepContr;
             end
             gen.stimTime = obj.periodDur*1000/2;
-            gen.freqCutoff = obj.frequencyCutoff;
+            gen.freqCutoffHigh = obj.frequencyCutoffHigh;
+            gen.freqCutoffLow = obj.frequencyCutoffLow;
             gen.numFilters = obj.numberOfFilters;
             gen.mean = 0;
             gen.seed = seed1;
@@ -114,7 +115,7 @@ classdef SwitchingPeriodBandpassNoise < edu.washington.riekelab.protocols.RiekeL
             
             
             %%% noise 2 (second half)
-            gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorBandpass();
+            gen = edu.washington.riekelab.weber.stimuli.GaussianNoiseGeneratorBandpass();
             
             seed2 = RandStream.shuffleSeed;
             
