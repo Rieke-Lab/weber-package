@@ -12,6 +12,7 @@ classdef GaussianNoiseGeneratorBandpass < symphonyui.core.StimulusGenerator
         numFilters = 0      % Number of filters in cascade for smoothing
         mean                % Mean amplitude (units)
         seed                % Random number generator seed
+        forceThroughMean = false; % Force beginning and end of noise sequence to go through mean
         inverted = false    % Invert noise polarity about the mean (true/false)
         upperLimit = inf    % Upper bound on signal, signal is clipped to this value (units)
         lowerLimit = -inf   % Lower bound on signal, signal is clipped to this value (units)
@@ -90,6 +91,15 @@ classdef GaussianNoiseGeneratorBandpass < symphonyui.core.StimulusGenerator
             noiseTime = noiseTime / filterFactor;
             
             noiseTime = real(noiseTime);
+            
+            if obj.forceThroughMean
+                cent = 12; % center of sigmoid, ms
+                slope = .6;  % slope of sigmoid
+                timeVec = (1:stimPts)/obj.sampleRate*1e3;
+
+                forceFunc = 1./(1+exp(-slope*(timeVec-cent))) ./ (1+exp(slope*(timeVec-(timeVec(end)-cent))));
+                noiseTime = noiseTime .* forceFunc;
+            end
             
             % Flip if specified.
             if obj.inverted
