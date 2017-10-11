@@ -22,12 +22,15 @@ classdef SwitchingPlainSine < edu.washington.riekelab.protocols.RiekeLabProtocol
         binSize = 50;                   % Size of histogram bin for PSTH (ms)
         numEpochsAvg = uint16(25);       % Number of epochs to average for each PSTH trace
         numAvgsPlot = uint16(5);        % Number of PSTHs to keep on plot
+        onlineAnalysis = 'extracellular'
+
     end
     
     
     properties (Hidden)
         ledType
         ampType
+        onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'extracellular', 'whole cell'})
     end
     
     methods
@@ -47,7 +50,7 @@ classdef SwitchingPlainSine < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.epochsPerBlock*2*obj.numBlocks);
+            obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.epochsPerBlock*2*obj.numBlocks,obj.onlineAnalysis);
             obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
 
             device = obj.rig.getDevice(obj.led);
