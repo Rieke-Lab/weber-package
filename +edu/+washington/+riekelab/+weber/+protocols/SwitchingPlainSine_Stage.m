@@ -43,17 +43,21 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
 
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.turner.figures.FrameTimingFigure',...
-                obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
+%             obj.showFigure('edu.washington.riekelab.weber.figures.FrameTimingFigure',...
+%                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
+            
             obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
 
             if ~strcmp(obj.onlineAnalysis,'none')
-                obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.epochsPerBlock*2*obj.numBlocks);
+                obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.epochsPerBlock*2*obj.numBlocks,obj.onlineAnalysis);
             end
         end
         
-        function [mult,positionInBlock,periodDurActual] = getPeriodDurActual(obj,epochNum)  % get periodDurActual and other params of this epoch
-                        
+        function prepareEpoch(obj, epoch)
+            
+            prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
+            
+            epochNum = obj.numEpochsPrepared;
             positionInBlock = mod(epochNum,double(obj.epochsPerBlock)*2); % calculate whether in first or second half of each full block
             if positionInBlock == 0
                 positionInBlock = double(obj.epochsPerBlock)*2;
@@ -69,20 +73,12 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
             else
                 periodDurActual = roundedPeriodDur;
             end
-        end
-
-        function prepareEpoch(obj, epoch)
-            
-            prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
-            
-            epochNum = obj.numEpochsPrepared;
-            [mult,positionInBlock,periodDurActual] = obj.getPeriodDurActual(obj, epochNum);
             
             epoch.addParameter('mult', mult);
             epoch.addParameter('positionInBlock', positionInBlock);
             epoch.addParameter('periodDurActual', periodDurActual);
             device = obj.rig.getDevice(obj.amp);
-            duration = obj.periodDurActual;
+            duration = periodDurActual;
             epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
             epoch.addResponse(device);
             
@@ -99,14 +95,13 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
             p.setBackgroundColor(obj.lum); % Set background intensity
             
             % Create sine switching stimulus.
-            [stim,mult,positionInBlock,periodDurActual] = obj.createStimulus(epochNum);
-
             stimRect = stage.builtin.stimuli.Rectangle();
             stimRect.size = canvasSize;
             stimRect.position = canvasSize/2;
             p.addStimulus(stimRect);
+            epochNum = obj.numEpochsPrepared;
             stimValue = stage.builtin.controllers.PropertyController(stimRect, 'color',...
-                @(state)getStimIntensity(obj, state.frame));
+                @(state)getStimIntensity(obj, state.frame, epochNum));
             p.addController(stimValue); %add the controller
             
             %%%% big function to get stimulus intensity at particular frame
@@ -157,10 +152,6 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
                 p.addStimulus(aperture); %add aperture
             end
             
-            % hide during pre & post
-            stimRectVisible = stage.builtin.controllers.PropertyController(stimRect, 'visible', ...
-                @(state)state.time < obj.periodDur);
-            p.addController(stimRectVisible);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
