@@ -47,10 +47,10 @@ classdef SwitchingPlainSineStacked_Stage < edu.washington.riekelab.protocols.Rie
             obj.showFigure('edu.washington.riekelab.weber.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
             
-            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.epochsPerBlock*2*obj.numBlocks);
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.numEpochs);
 
             if ~strcmp(obj.onlineAnalysis,'none')
-                obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.epochsPerBlock*2*obj.numBlocks,obj.onlineAnalysis);
+                obj.showFigure('edu.washington.riekelab.weber.figures.SwitchingPeriodBasicFigure',obj.rig.getDevice(obj.amp),obj.binSize,obj.numEpochsAvg,obj.numAvgsPlot,obj.numEpochs,obj.onlineAnalysis);
             end
         end
         
@@ -59,7 +59,7 @@ classdef SwitchingPlainSineStacked_Stage < edu.washington.riekelab.protocols.Rie
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj, epoch);
                         
             device = obj.rig.getDevice(obj.amp);
-            duration = obj.periodDur*obj.periodsPerEpoch;
+            duration = obj.periodDur*double(obj.periodsPerEpoch);
             epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
             epoch.addResponse(device);
             
@@ -72,7 +72,7 @@ classdef SwitchingPlainSineStacked_Stage < edu.washington.riekelab.protocols.Rie
             %convert from microns to pixels...
             apertureDiameterPix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameter);
             
-            p = stage.core.Presentation(obj.periodDur); %create presentation of specified duration
+            p = stage.core.Presentation(obj.periodDur*double(obj.periodsPerEpoch)); %create presentation of specified duration
             p.setBackgroundColor(obj.lum); % Set background intensity
             
             % Create sine switching stimulus.
@@ -80,9 +80,8 @@ classdef SwitchingPlainSineStacked_Stage < edu.washington.riekelab.protocols.Rie
             stimRect.size = canvasSize;
             stimRect.position = canvasSize/2;
             p.addStimulus(stimRect);
-            epochNum = obj.numEpochsPrepared;
             stimValue = stage.builtin.controllers.PropertyController(stimRect, 'color',...
-                @(state)getStimIntensity(obj, state.frame, epochNum));
+                @(state)getStimIntensity(obj, state.frame));
             p.addController(stimValue); %add the controller
             
             %%%% big function to get stimulus intensity at particular frame
