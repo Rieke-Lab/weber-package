@@ -1,21 +1,22 @@
-classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabStageProtocol
+classdef SwitchingPlainSineStacked_Stage < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
-        periodDur = 4                   % Switching period (s)
-        sinFreq = 8;                    % Frequency of sine wave (Hz)
+        periodDur = 2                   % Switching period (s)
+        sinFreq = 6;                    % Frequency of sine wave (Hz)
         
         lum = .5                        % Luminance
         baseContr = .1                  % Contrast for first half of epoch
         stepContr = 1                   % Contrast for second half of epoch
         startLow = false                % Start at baseLum/baseContr or stepLum/stepContr
+        mult = 1;                       % First cycle starts upward (1) or downward (-1)
         
-        epochsPerBlock = uint16(20)     % Number of epochs (for each switching period) within each block
-        numBlocks = uint16(10)          % Number of blocks
+        periodsPerEpoch = uint16(10)    % Number of periods for each epoch
+        numEpochs = uint16(10)          % Number of epochs
         
         amp                             % Input amplifier
         
         binSize = 50;                   % Size of histogram bin for PSTH (ms)
-        numEpochsAvg = uint16(25);       % Number of epochs to average for each PSTH trace
+        numEpochsAvg = uint16(25);      % Number of epochs to average for each PSTH trace
         numAvgsPlot = uint16(5);        % Number of PSTHs to keep on plot
                 
         apertureDiameter = 0 % um
@@ -56,29 +57,9 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
         function prepareEpoch(obj, epoch)
             
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj, epoch);
-            
-            epochNum = obj.numEpochsPrepared;
-            positionInBlock = mod(epochNum,double(obj.epochsPerBlock)*2); % calculate whether in first or second half of each full block
-            if positionInBlock == 0
-                positionInBlock = double(obj.epochsPerBlock)*2;
-            end
-            if  positionInBlock <= obj.epochsPerBlock
-                mult = 1;
-            else
-                mult = -1;
-            end
-            roundedPeriodDur = round(obj.periodDur/2/(1/obj.sinFreq))*(1/obj.sinFreq)*2;
-            if  positionInBlock == obj.epochsPerBlock ||  positionInBlock == obj.epochsPerBlock *2
-                periodDurActual = roundedPeriodDur + 1/obj.sinFreq/2;
-            else
-                periodDurActual = roundedPeriodDur;
-            end
-            
-            epoch.addParameter('mult', mult);
-            epoch.addParameter('positionInBlock', positionInBlock);
-            epoch.addParameter('periodDurActual', periodDurActual);
+                        
             device = obj.rig.getDevice(obj.amp);
-            duration = periodDurActual;
+            duration = obj.periodDur*obj.periodsPerEpoch;
             epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
             epoch.addResponse(device);
             
@@ -105,25 +86,20 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
             p.addController(stimValue); %add the controller
             
             %%%% big function to get stimulus intensity at particular frame
-            function i = getStimIntensity(obj, frame, epochNum)
+            function i = getStimIntensity(obj, frame)
                 persistent intensity;
                 % determine which periodDur to use
-                positionInBlock = mod(epochNum,double(obj.epochsPerBlock)*2); % calculate whether in first or second half of each full block
-                if positionInBlock == 0
-                    positionInBlock = double(obj.epochsPerBlock)*2;
+                
+                framesPerPeriod = 60*obj.periodDur;   % assume 60 frames/sec for now
+                frameWithinOneCycle = rem(frame,framesPerPeriod);  % transform to get position within one cycle
+                if frameWithinOneCycle == 0
+                    frameWithinOneCycle = framesPerPeriod;
                 end
-                if  positionInBlock <= obj.epochsPerBlock
-                    mult = 1;
-                else
-                    mult = -1;
-                end
-                roundedPeriodDur = round(obj.periodDur/2/(1/obj.sinFreq))*(1/obj.sinFreq)*2;
+                framesInFirstHalfCycle = obj.periodDur/2*60; % assume 60 frames/sec for now
                 
-                framesInFirstHalf = roundedPeriodDur/2*60; % assume 60 frames/sec for now
+                intensity = sin(2*pi*obj.sinFreq*frameWithinOneCycle/60); 
                 
-                intensity = sin(2*pi*obj.sinFreq*frame/60); 
-                
-                if frame <= framesInFirstHalf  % in first half
+                if frameWithinOneCycle <= framesInFirstHalfCycle  % in first half
                     if obj.startLow  % start with baseContr
                         intensity = intensity*obj.baseContr;
                     else 
@@ -137,7 +113,7 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
                     end
                 end
                 
-                intensity = intensity*mult + obj.lum;  % add mean in
+                intensity = intensity*obj.mult + obj.lum;  % add mean in
                 i = intensity;
             end
             %%%%%%%
@@ -155,11 +131,11 @@ classdef SwitchingPlainSine_Stage < edu.washington.riekelab.protocols.RiekeLabSt
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.epochsPerBlock*2*obj.numBlocks;
+            tf = obj.numEpochsPrepared < obj.numEpochs;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.epochsPerBlock*2*obj.numBlocks;        
+            tf = obj.numEpochsCompleted < obj.numEpochs;        
         end
     end
     
