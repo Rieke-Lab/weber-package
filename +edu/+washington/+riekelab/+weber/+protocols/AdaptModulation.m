@@ -1,4 +1,4 @@
-classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
+classdef AdaptModulation < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
         amp                             % Output amplifier
@@ -14,7 +14,7 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
         phaseShift = 0.0                % Phase shift (degrees)
         backgroundIntensity = 0.5       % Background light intensity (0-1)
         centerOffset = [0,0]            % Center offset in pixels (x,y) 
-        stimulusClass = 'center-const-surround'   % Stimulus class: spot, annulus, center-surround, center-const-surround
+        stimulusClass = 'center-const-surround'   % Stimulus class: spot, annulus, center-surround, center-const-surround, center-full
         temporalClass = 'sinewave'      % Temporal class: sinewave or squarewave
         chromaticClass = 'achromatic'   % Chromatic class
         onlineAnalysis = 'extracellular'% Online analysis type.
@@ -33,6 +33,7 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
         lowContrast
         temporalFrequency
         phaseShiftRad
+        frameRate = 60
     end
     
     
@@ -48,6 +49,7 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+            obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
 %             obj.showFigure('edu.washington.riekelab.manookin.figures.AdaptGratingFigure', ...
 %                 obj.rig.getDevice(obj.amp),'recordingType',obj.onlineAnalysis,...
 %                 'preTime',obj.preTime,...
@@ -63,15 +65,16 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
         end
         
         function p = createPresentation(obj)
+            canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
             p = stage.core.Presentation((obj.preTime + obj.stimTime + obj.tailTime) * 1e-3);
             p.setBackgroundColor(obj.backgroundIntensity);
             
             if strcmp(obj.stimulusClass, 'center-surround') || strcmp(obj.stimulusClass,'center-const-surround')
                 surround = stage.builtin.stimuli.Rectangle();
                 surround.color = obj.backgroundIntensity;
-                surround.position = obj.canvasSize/2 + obj.centerOffset;
+                surround.position = canvasSize/2 + obj.centerOffset;
                 surround.orientation = 0;
-                surround.size = max(obj.canvasSize) * ones(1,2) + 2*max(abs(obj.centerOffset));
+                surround.size = max(canvasSize) * ones(1,2) + 2*max(abs(obj.centerOffset));
                 sc = (obj.apertureRadius)*2 / max(surround.size);
                 m = stage.core.Mask.createCircularAperture(sc);
                 surround.setMask(m);
@@ -92,11 +95,11 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
                 spot = stage.builtin.stimuli.Ellipse();
                 spot.radiusX = obj.radius;
                 spot.radiusY = obj.radius; 
-                spot.position = obj.canvasSize/2 + obj.centerOffset;
+                spot.position = canvasSize/2 + obj.centerOffset;
             else
                 spot = stage.builtin.stimuli.Rectangle();
-                spot.size = obj.canvasSize;
-                spot.position = obj.canvasSize/2;
+                spot.size = canvasSize;
+                spot.position = canvasSize/2;
                 spot.orientation = 0;
             end
             spot.color = obj.bkg;
@@ -109,7 +112,7 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
                 mask = stage.builtin.stimuli.Ellipse();
                 mask.radiusX = obj.apertureRadius;
                 mask.radiusY = obj.apertureRadius;
-                mask.position = obj.canvasSize/2 + obj.centerOffset;
+                mask.position = canvasSize/2 + obj.centerOffset;
                 mask.color = obj.backgroundIntensity; 
                 p.addStimulus(mask);
             end
@@ -143,6 +146,10 @@ classdef AdaptModulation < edu.washington.riekelab.protocols.RiLabStageProtocol
   
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj, epoch);
+            device = obj.rig.getDevice(obj.amp);
+            duration = (obj.preTime + obj.stimTime + obj.tailTime) / 1e3;
+            epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
+            epoch.addResponse(device);
             
             % Deal with epoch-specific parameters.
             obj.temporalFrequency = obj.temporalFrequencies(mod(obj.numEpochsCompleted,length(obj.temporalFrequencies))+1);
