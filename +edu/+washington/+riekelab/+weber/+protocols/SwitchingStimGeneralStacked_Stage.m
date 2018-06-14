@@ -1,43 +1,39 @@
 classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.RiekeLabStageProtocol
-    
+    % Weird stutter between periods -- easily see with noise steps,
+    % freqparam = 500, with apertures
+    % Should add way to recover stimulus sequence 
     properties
         periodDur = 2                   % Switching period (s)
         backgroundIntensity = 0.5       % Background intensity/luminance (0-1)
-        contrPhase1 = .1                % Contrast for first half of period
-        contrPhase2 = 1                 % Contrast for second half of period
-        startLow = false                % Start at baseLum/baseContr or stepLum/stepContr
-        mult = 1;                       % First cycle starts upward (1) or downward (-1)
-        
-        stimType = 'sine'               % 'sine','binary noise','noise steps','white noise'
-        freqParam = 6;                  % sine: frequency of sine wave (Hz)
-                                        % binary noise: dwell time for each draw
-                                        % noise steps: dwell time for each draw 
-                                        % white noise: low-pass frequency cutoff (Hz)
+        contrPhase1 = 1                 % Contrast for first half of period
+        contrPhase2 = 0.1               % Contrast for second half of period
+        apertureDiameterPhase1 = 0      % Aperture diameter for first half of period (um); 0 gives full field
+        apertureDiameterPhase2 = 0      % Aperture diameter for second half of period (um); 0 gives full field
+
+        stimType = 'sine'               % 'sine','binary noise','noise steps'
+        freqParam = 6;                  % sine: frequency of sine wave (Hz),  binary noise: dwell time for each draw (ms), noise steps: dwell time for each draw (ms)
                                        
         periodsPerEpoch = uint16(10)    % Number of periods for each epoch
         numEpochs = uint16(10)          % Number of epochs
-        
+       
+        tailTime = 0.25                 % Time after stimulus
         amp                             % Input amplifier
         
+        onlineAnalysis = 'none'
         binSize = 50;                   % Size of histogram bin for PSTH (ms)
         numEpochsAvg = uint16(25);      % Number of epochs to average for each PSTH trace
         numAvgsPlot = uint16(5);        % Number of PSTHs to keep on plot
-                
-        aperatureDiameterPhase1 = 0     % Aperture diameter for first half of period (um); 0 gives full field
-        apertureDiameterPhase2 = 0      % Aperture diameter for second half of period (um); 0 gives full field
-
-        onlineAnalysis = 'none'
-        numberOfAverages = uint16(10) % number of epochs to queue
     end
 
     properties (Hidden)
         ampType
         onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
-        freqParamType = symphonyui.core.PropertyType('char', 'row', {'sine','binary noise','noise steps','white noise'})
-        preTime = 0;
-        tailTime = 0;
+        stimTypeType = symphonyui.core.PropertyType('char', 'row', {'sine','binary noise','noise steps'})
+        dwellCount
+        currentStep
     end
     
+
     methods
         
         function didSetRig(obj)
@@ -47,7 +43,6 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
          
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
-
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.weber.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
@@ -68,49 +63,94 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
             epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
             epoch.addResponse(device);
             
-            
         end
         
         function p = createPresentation(obj)
+            obj.dwellCount = 1;
+            obj.currentStep = 0;
             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
             
-            % Set background intensity
-            p = stage.core.Presentation(obj.periodDur*double(obj.periodsPerEpoch)); %create presentation of specified duration
-            p.setBackgroundColor(obj.backgroundIntensity); 
+            %convert from microns to pixels...
             
-            %%%%%
-            % Create switching stimulus, first half of period.
-            stimRect1 = stage.builtin.stimuli.Rectangle();
-            stimRect1.size = canvasSize;
-            stimRect1.position = canvasSize/2;
+            p = stage.core.Presentation(obj.periodDur*double(obj.periodsPerEpoch)+obj.tailTime); %create presentation of specified duration
+            p.setBackgroundColor(obj.backgroundIntensity); % Set background intensity
             
-            % Create aperture
-            if apertureDiameterPhase1 > 0
-                apertureDiameterPhase1Pix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameterPhase1);
-                mask1 = stage.core.Mask.createCircularAperture(apertureDiameterPhase1Pix);
-                stimRect1.setMask(mask1);
+            
+            % Create switching stimulus.
+            stimRect = stage.builtin.stimuli.Rectangle();
+            stimRect.size = canvasSize;
+            stimRect.position = canvasSize/2;
+            switch obj.stimType
+                case 'sine'
+                    stimValue = stage.builtin.controllers.PropertyController(stimRect, 'color',...
+                        @(state)getSineStimIntensity(obj, state.frame));
+                case 'binary noise'
+                    stimValue = stage.builtin.controllers.PropertyController(stimRect, 'color',...
+                        @(state)getBinaryNoiseStimIntensity(obj, state.frame));
+                case 'noise steps'
+                    stimValue = stage.builtin.controllers.PropertyController(stimRect, 'color',...
+                        @(state)getNoiseStepsStimIntensity(obj, state.frame));
             end
             
-            p.addStimulus(stimRect1);
-            stimValue = stage.builtin.controllers.PropertyController(stimRect1, 'color',...
-                @(state)getStimIntensity(obj, state.frame));
             p.addController(stimValue); %add the controller
+            p.addStimulus(stimRect);
             
             
-            %%%% big function to get stimulus intensity at particular frame
-            function i = getStimIntensity(obj, frame)
+            % aperture 1
+            if (obj.apertureDiameterPhase1 > 0) %% Create aperture
+                apertureDiameterPix1 = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameterPhase1);
+                aperture1 = stage.builtin.stimuli.Rectangle();
+                aperture1.position = canvasSize/2;
+                aperture1.color = obj.backgroundIntensity;
+                aperture1.size = [max(canvasSize) max(canvasSize)];
+                mask = stage.core.Mask.createCircularAperture(apertureDiameterPix1/max(canvasSize), 1024); %circular aperture
+                aperture1.setMask(mask);
+                p.addStimulus(aperture1); %add aperture
+                aperture1Visible = stage.builtin.controllers.PropertyController(aperture1, 'visible', ...
+                    @(state) getPhase1(obj, state.frame) );
+                p.addController(aperture1Visible);
+            end
+
+            % aperture 2
+            if (obj.apertureDiameterPhase2 > 0) %% Create aperture
+                apertureDiameterPix2 = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameterPhase2);
+                aperture2 = stage.builtin.stimuli.Rectangle();
+                aperture2.position = canvasSize/2;
+                aperture2.color = obj.backgroundIntensity;
+                aperture2.size = [max(canvasSize) max(canvasSize)];
+                mask = stage.core.Mask.createCircularAperture(apertureDiameterPix2/max(canvasSize), 1024); %circular aperture
+                aperture2.setMask(mask);
+                p.addStimulus(aperture2); %add aperture
+                aperture2Visible = stage.builtin.controllers.PropertyController(aperture2, 'visible', ...
+                    @(state) ~getPhase1(obj, state.frame) );
+                p.addController(aperture2Visible);
+            end
+            
+            % aperture for tail time
+            apertureTail = stage.builtin.stimuli.Rectangle();
+            apertureTail.position = canvasSize/2;
+            apertureTail.color = obj.backgroundIntensity;
+            apertureTail.size = [max(canvasSize) max(canvasSize)];
+            maskTail = stage.core.Mask.createCircularAperture(0, 1024); %circular aperture
+            apertureTail.setMask(maskTail);
+            p.addStimulus(apertureTail); %add aperture
+            apertureTailVisible = stage.builtin.controllers.PropertyController(apertureTail, 'visible', ...
+                @(state) state.time>(obj.periodDur*obj.periodsPerEpoch) );
+            p.addController(apertureTailVisible);
+            
+            
+            %%%% function to get sine stimulus intensity at particular frame
+            function i = getSineStimIntensity(obj, frame)
                 persistent intensity;
-                
-                % transform to get frame position within one cycle
+               
                 framesPerPeriod = 60*obj.periodDur;   % assume 60 frames/sec for now
-                frameWithinOneCycle = rem(frame,framesPerPeriod);  
+                frameWithinOneCycle = rem(frame,framesPerPeriod);  % transform to get position within one cycle
                 if frameWithinOneCycle == 0
                     frameWithinOneCycle = framesPerPeriod;
                 end
-                
                 framesInFirstHalfCycle = obj.periodDur/2*60; % assume 60 frames/sec for now
                 
-                intensity = sin(2*pi*obj.sinFreq*frameWithinOneCycle/60);
+                intensity = sin(2*pi*obj.freqParam*frameWithinOneCycle/60);
                 
                 if frameWithinOneCycle <= framesInFirstHalfCycle  % in first half
                     intensity = intensity*obj.contrPhase1;
@@ -123,6 +163,83 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
             end
             %%%%%%%
             
+          %%%% function to get binary noise stimulus intensity at particular frame
+            function i = getBinaryNoiseStimIntensity(obj, frame)
+                persistent intensity;
+               
+                dwellFrames = ceil(obj.freqParam/1000*60); % assume 60 frames/sec
+                framesPerPeriod = 60*obj.periodDur;   % assume 60 frames/sec for now
+                frameWithinOneCycle = rem(frame,framesPerPeriod);  % transform to get position within one cycle
+                if frameWithinOneCycle == 0
+                    frameWithinOneCycle = framesPerPeriod;
+                end
+                framesInFirstHalfCycle = obj.periodDur/2*60; % assume 60 frames/sec for now
+                               
+                if frame==1 || (obj.dwellCount == dwellFrames || (frameWithinOneCycle > (framesInFirstHalfCycle) && (frameWithinOneCycle <= (framesInFirstHalfCycle+1)))) % potentially update
+                    if frameWithinOneCycle <= framesInFirstHalfCycle  % in first half
+                        obj.currentStep = sign(randn)*obj.backgroundIntensity*obj.contrPhase1;
+                    else % in second half
+                        obj.currentStep = sign(randn)*obj.backgroundIntensity*obj.contrPhase2;
+                    end
+                    obj.dwellCount = 1;
+                else
+                    obj.dwellCount = obj.dwellCount+1;
+                end
+                intensity = obj.currentStep + obj.backgroundIntensity;  % add mean in
+
+                i = intensity;
+            end
+            %%%%%%%
+            
+          %%%% function to get binary noise stimulus intensity at particular frame
+            function i = getNoiseStepsStimIntensity(obj, frame)
+                persistent intensity;
+               
+                dwellFrames = ceil(obj.freqParam/1000*60); % assume 60 frames/sec
+                framesPerPeriod = 60*obj.periodDur;   % assume 60 frames/sec for now
+                frameWithinOneCycle = rem(frame,framesPerPeriod);  % transform to get position within one cycle
+                if frameWithinOneCycle == 0
+                    frameWithinOneCycle = framesPerPeriod;
+                end
+                framesInFirstHalfCycle = obj.periodDur/2*60; % assume 60 frames/sec for now
+                               
+                if frame==1 || (obj.dwellCount == dwellFrames || (frameWithinOneCycle > (framesInFirstHalfCycle) && (frameWithinOneCycle <= (framesInFirstHalfCycle+1)))) % potentially update
+                    if frameWithinOneCycle <= framesInFirstHalfCycle  % in first half
+                        obj.currentStep = randn*obj.backgroundIntensity*obj.contrPhase1;
+                    else % in second half
+                        obj.currentStep = randn*obj.backgroundIntensity*obj.contrPhase2;
+                    end
+                    obj.dwellCount = 1;
+                else
+                    obj.dwellCount = obj.dwellCount+1;
+                end
+                intensity = obj.currentStep + obj.backgroundIntensity;  % add mean in
+
+                i = intensity;
+            end
+            %%%%%%%
+
+            %%%% function to get phase (first or second half of epoch)
+            function p1 = getPhase1(obj, frame)
+                persistent phase1Flag
+               
+                framesPerPeriod = 60*obj.periodDur;   % assume 60 frames/sec for now
+                frameWithinOneCycle = rem(frame,framesPerPeriod);  % transform to get position within one cycle
+                if frameWithinOneCycle == 0
+                    frameWithinOneCycle = framesPerPeriod;
+                end
+                framesInFirstHalfCycle = obj.periodDur/2*60; % assume 60 frames/sec for now
+                               
+                if (frameWithinOneCycle <= framesInFirstHalfCycle)  % in first half
+                    phase1Flag = 1;
+                else
+                    phase1Flag = 0;
+                end
+                
+                p1 = phase1Flag;
+            end
+            %%%%%%%
+
             
         end
         
@@ -136,3 +253,29 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
     end
     
 end
+%             
+%             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
+%             
+%             Set background intensity
+%             p = stage.core.Presentation(obj.periodDur*double(obj.periodsPerEpoch)); %create presentation of specified duration
+%             p.setBackgroundColor(obj.backgroundIntensity); 
+%             
+%             %%%%
+%             Create switching stimulus, first half of period.
+%             stimRect1 = stage.builtin.stimuli.Rectangle();
+%             stimRect1.size = canvasSize;
+%             stimRect1.position = canvasSize/2;
+%             
+%             % Create aperture
+%             if obj.apertureDiameterPhase1 > 0
+%                 apertureDiameterPhase1Pix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameterPhase1);
+%                 mask1 = stage.core.Mask.createCircularAperture(apertureDiameterPhase1Pix);
+%                 stimRect1.setMask(mask1);
+%             end
+%             
+%             p.addStimulus(stimRect1);
+%             stimValue = stage.builtin.controllers.PropertyController(stimRect1, 'color',...
+%                 @(state)getStimIntensity(obj, state.frame));
+%             p.addController(stimValue); %add the controller
+            
+ 

@@ -79,7 +79,7 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             if strcmp(obj.recordingType,'extracellular') %spike recording
                 newResponse = zeros(size(epochResponseTrace));
                 %count spikes
-                S = edu.washington.riekelab.turner.utils.spikeDetectorOnline(epochResponseTrace);
+                S = edu.washington.riekelab.weber.utils.spikeDetectorOnline(epochResponseTrace);
                 newResponse(S.sp) = 1;
             else %intracellular - Vclamp
                 epochResponseTrace = epochResponseTrace-mean(epochResponseTrace(1:prePts)); %baseline
@@ -99,7 +99,7 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             frameRate = obj.stageDevice.getMonitorRefreshRate();
             FMresponse = epoch.getResponse(obj.frameMonitor);
             FMdata = FMresponse.getData();
-            frameTimes = edu.washington.riekelab.turner.utils.getFrameTiming(FMdata,lightCrafterFlag);
+            frameTimes = edu.washington.riekelab.weber.utils.getFrameTiming(FMdata,lightCrafterFlag);
             preFrames = frameRate*(obj.preTime/1000);
             firstStimFrameFlip = frameTimes(preFrames+1);
             newResponse = newResponse(firstStimFrameFlip:end); %cut out pre-frames
@@ -137,7 +137,7 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             filterTmp = zeros(numChecksY,numChecksX,filterPts);
             for b = 1 : size(noiseMatrix,1)
                 for c = 1 : size(noiseMatrix,2)
-                    tmp = edu.washington.riekelab.turner.utils.getLinearFilterOnline(...
+                    tmp = edu.washington.riekelab.weber.utils.getLinearFilterOnline(...
                         squeeze(noiseMatrix(b,c,:))',...
                         response,updateRate, freqCutoffFraction*updateRate);
                     filterTmp(b,c,:) = tmp(1:filterPts);
