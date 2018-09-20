@@ -1,7 +1,6 @@
 classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.RiekeLabStageProtocol
-    % Weird stutter between periods -- easily see with noise steps,
-    % freqparam = 500, with apertures
-    % Should add way to recover stimulus sequence 
+% No way to recover noise stims
+
     properties
         periodDur = 2                   % Switching period (s)
         backgroundIntensity = 0.5       % Background intensity/luminance (0-1)
@@ -12,7 +11,8 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
 
         stimType = 'sine'               % 'sine','binary noise','noise steps'
         freqParam = 6;                  % sine: frequency of sine wave (Hz),  binary noise: dwell time for each draw (ms), noise steps: dwell time for each draw (ms)
-                                       
+        mult = 1;                       % +/-1; only used for sine wave
+        
         periodsPerEpoch = uint16(10)    % Number of periods for each epoch
         numEpochs = uint16(10)          % Number of epochs
        
@@ -153,12 +153,12 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
                 intensity = sin(2*pi*obj.freqParam*frameWithinOneCycle/60);
                 
                 if frameWithinOneCycle <= framesInFirstHalfCycle  % in first half
-                    intensity = intensity*obj.contrPhase1;
+                    intensity = intensity*obj.backgroundIntensity*obj.contrPhase1;
                 else % in second half
-                    intensity = intensity*obj.contrPhase2;
+                    intensity = intensity*obj.backgroundIntensity*obj.contrPhase2;
                 end
                 
-                intensity = intensity + obj.backgroundIntensity;  % add mean in
+                intensity = intensity*obj.mult + obj.backgroundIntensity;  % add mean in
                 i = intensity;
             end
             %%%%%%%
@@ -191,7 +191,7 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
             end
             %%%%%%%
             
-          %%%% function to get binary noise stimulus intensity at particular frame
+          %%%% function to get noise step stimulus intensity at particular frame
             function i = getNoiseStepsStimIntensity(obj, frame)
                 persistent intensity;
                
@@ -253,29 +253,5 @@ classdef SwitchingStimGeneralStacked_Stage < edu.washington.riekelab.protocols.R
     end
     
 end
-%             
-%             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
-%             
-%             Set background intensity
-%             p = stage.core.Presentation(obj.periodDur*double(obj.periodsPerEpoch)); %create presentation of specified duration
-%             p.setBackgroundColor(obj.backgroundIntensity); 
-%             
-%             %%%%
-%             Create switching stimulus, first half of period.
-%             stimRect1 = stage.builtin.stimuli.Rectangle();
-%             stimRect1.size = canvasSize;
-%             stimRect1.position = canvasSize/2;
-%             
-%             % Create aperture
-%             if obj.apertureDiameterPhase1 > 0
-%                 apertureDiameterPhase1Pix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameterPhase1);
-%                 mask1 = stage.core.Mask.createCircularAperture(apertureDiameterPhase1Pix);
-%                 stimRect1.setMask(mask1);
-%             end
-%             
-%             p.addStimulus(stimRect1);
-%             stimValue = stage.builtin.controllers.PropertyController(stimRect1, 'color',...
-%                 @(state)getStimIntensity(obj, state.frame));
-%             p.addController(stimValue); %add the controller
-            
+
  
