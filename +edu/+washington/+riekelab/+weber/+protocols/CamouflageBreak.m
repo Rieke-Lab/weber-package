@@ -1,4 +1,4 @@
-classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
+classdef CamouflageBreak < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     % From Mike M
     % Needs to be debugged for Rieke lab rigs
@@ -31,6 +31,7 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
         backgroundPosition
         objectPosition
         numFrames
+        frameRate = 60;
     end
     
     methods
@@ -41,7 +42,7 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
         end
         
         function prepareRun(obj)
-            prepareRun@riekelab.protocols.RiekeLabStageProtocol(obj);
+            prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 %             obj.showFigure('manookinlab.figures.MeanResponseFigure', ...
@@ -53,7 +54,10 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             obj.numFrames = ceil(obj.stimTime*1e-3*obj.frameRate); % Some extra so you don't throw error.
         end
         
+      
         function p = createPresentation(obj)
+            
+            canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
             
             p = stage.core.Presentation((obj.preTime + obj.stimTime + obj.tailTime) * 1e-3);
             p.setBackgroundColor(obj.backgroundIntensity);
@@ -61,7 +65,7 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             % Seed the random number generator.
             noiseStream = RandStream('mt19937ar', 'Seed', obj.seed);
             % Generate the background texture.
-            numBars = ceil(max(obj.canvasSize)*1.5/obj.barWidth);
+            numBars = ceil(max(canvasSize)*1.5/obj.barWidth);
             switch obj.contrastClass
                 case 'binary'
                     imageMatrix = obj.backgroundContrast*(2*(noiseStream.rand(1,numBars)>0.5)-1);
@@ -87,8 +91,8 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             %--------------------------------------------------------------
             % Create your background image.
             checkerboard = stage.builtin.stimuli.Image(imageMatrix);
-            checkerboard.position = obj.canvasSize / 2 + obj.centerOffset;
-            checkerboard.size = [numBars*obj.barWidth obj.canvasSize(2)];
+            checkerboard.position = canvasSize / 2 + obj.centerOffset;
+            checkerboard.size = [numBars*obj.barWidth canvasSize(2)];
             
             % Set the minifying and magnifying functions to form discrete
             % stixels.
@@ -110,8 +114,8 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             %--------------------------------------------------------------
             % Create your background image.
             objectImg = stage.builtin.stimuli.Image(objectMatrix);
-            objectImg.position = obj.canvasSize / 2 + obj.centerOffset;
-            objectImg.size = [obj.numObjectBars*obj.barWidth obj.canvasSize(2)];
+            objectImg.position = canvasSize / 2 + obj.centerOffset;
+            objectImg.size = [obj.numObjectBars*obj.barWidth canvasSize(2)];
             
             % Set the minifying and magnifying functions to form discrete
             % stixels.
@@ -132,7 +136,7 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             
             function p = getBackgroundPosition(obj, time)
                 if time <= 0
-                    p = obj.canvasSize / 2 + [obj.centerOffset(1) 0];
+                    p = canvasSize / 2 + [obj.centerOffset(1) 0];
                 else
                     fr = min(ceil(time*obj.frameRate), size(obj.backgroundPosition,1));
                     p = obj.backgroundPosition(fr,:);
@@ -141,7 +145,7 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             
             function p = getObjectPosition(obj, time)
                 if time <= 0
-                    p = obj.canvasSize / 2 + [obj.centerOffset(1) 0];
+                    p = canvasSize / 2 + [obj.centerOffset(1) 0];
                 else
                     fr = min(ceil(time*obj.frameRate), size(obj.objectPosition,1));
                     p = obj.objectPosition(fr,:);
@@ -150,8 +154,13 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
         end
         
         function prepareEpoch(obj, epoch)
-            prepareEpoch@riekelab.protocols.ManookinLabStageProtocol(obj, epoch);
-            
+            prepareEpoch@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj, epoch);
+            canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
+            device = obj.rig.getDevice(obj.amp);
+            duration = (obj.preTime + obj.stimTime + obj.tailTime) / 1e3;
+            epoch.addDirectCurrentStimulus(device, device.background, duration, obj.sampleRate);
+            epoch.addResponse(device);
+
             % Deal with the seed.
             if obj.randomSeed
                 obj.seed = RandStream.shuffleSeed;
@@ -164,12 +173,12 @@ classdef CamouflageBreak < riekelab.protocols.RiekeLabStageProtocol
             
             % Get the background and object trajectories.
             obj.backgroundPosition = cumsum(obj.backgroundSpeed/obj.frameRate*noiseStream.randn(obj.numFrames,1))...
-                *[1 0] + ones(obj.numFrames,1)*(obj.canvasSize/2+[obj.centerOffset(1) 0]);
+                *[1 0] + ones(obj.numFrames,1)*(canvasSize/2+[obj.centerOffset(1) 0]);
             obj.objectPosition = obj.backgroundPosition;
             % Calculate the frame to start moving.
             mvFrame = floor(obj.waitTime * 1e-3 * obj.frameRate)+1;
             mvFrames = (1:length(mvFrame:obj.numFrames))*obj.moveSpeed/obj.frameRate;
-            if obj.objectPosition(mvFrame) > (obj.canvasSize(1)/2 + obj.centerOffset(1))
+            if obj.objectPosition(mvFrame) > (canvasSize(1)/2 + obj.centerOffset(1))
                 mvFrames = -mvFrames;
             end
             obj.objectPosition(mvFrame:obj.numFrames,1) = mvFrames' + obj.objectPosition(mvFrame-1,1);
